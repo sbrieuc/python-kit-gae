@@ -7,6 +7,7 @@ prismic.api
 This module implements the Prismic API.
 
 """
+from copy import copy, deepcopy
 
 import urllib
 import urllib2
@@ -18,12 +19,12 @@ from .exceptions import (InvalidTokenError, AuthorizationNeededError,
 from .fragments import Fragment
 import structured_text
 import logging
-from .cache import NoCache
+from .cache import ShelveCache
 
 log = logging.getLogger(__name__)
 
 
-def get(url, access_token=None, cache=NoCache()):
+def get(url, access_token=None, cache=ShelveCache()):
     """Fetches the prismic api JSON.
     Returns :class:`Api <Api>` object.
 
@@ -33,7 +34,7 @@ def get(url, access_token=None, cache=NoCache()):
     return Api(_get_json(url, access_token=access_token, cache=cache), access_token, cache)
 
 
-def _get_json(url, params=dict(), access_token=None, cache=NoCache()):
+def _get_json(url, params=dict(), access_token=None, cache=ShelveCache()):
     full_params = params.copy()
     if access_token is not None:
         full_params["access_token"] = access_token
@@ -171,6 +172,13 @@ class SearchForm(object):
             self.data.update({field: value})
         return self
 
+    def orderings(self, orderings):
+        """Sets the query orderings
+
+        :param String with the orderings predicate
+        """
+        return self.set("orderings", orderings)
+
     def submit_assert_preconditions(self):
         if self.data.get('ref') is None:
             raise RefMissing()
@@ -178,6 +186,34 @@ class SearchForm(object):
     def submit(self):
         self.submit_assert_preconditions()
         return Response(_get_json(self.action, self.data, self.access_token, self.cache))
+
+    def page(self, page_number):
+        """Set query page number
+
+        :param page_number: int representing the page number
+        """
+        return self.set("page", page_number)
+
+    def pageSize(self, nb_results):
+        """Set query page size
+
+        :param nb_results: int representing the number of results per page
+        """
+        return self.set("pageSize", nb_results)
+
+    def count(self):
+        """Count the total number of results
+        """
+        return copy(self).pageSize(1).submit().total_results_size
+
+    def __copy__(self):
+        cp = type(self)({}, self.access_token, self.cache)
+        cp.action = deepcopy(self.action)
+        cp.method = deepcopy(self.method)
+        cp.enctype = deepcopy(self.enctype)
+        cp.fields = deepcopy(self.fields)
+        cp.data = deepcopy(self.data)
+        return cp
 
 
 class Response(object):
@@ -192,11 +228,19 @@ class Response(object):
         total_pages (int): total number of pages for this query
         next_page (str): ref of the next page (may be None)
         prev_page (str): ref of the previous page (may be None)
+        results_size (int) : number of results actually returned for the current page
     """
 
     def __init__(self, data):
         self._data = data
         self.documents = map(lambda d: Document(d), data.get("results"))
+        self.page = data.get("page")
+        self.next_page = data.get("next_page")
+        self.prev_page = data.get("prev_page")
+        self.results_per_page = data.get("results_per_page")
+        self.total_pages = data.get("total_pages")
+        self.total_results_size = data.get("total_results_size")
+        self.results_size = data.get("results_size")
 
     def __getattr__(self, name):
         return self._data.get(name)
