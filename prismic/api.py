@@ -274,6 +274,9 @@ class Document(object):
     def get_structured_text(self, field):
         return self.get_fragment_type(field, structured_text.StructuredText)
 
+    def get_group(self, field):
+        return self.get_fragment_type(field, Fragment.Group)
+
     def get_html(self, field, link_resolver):
         """Get the html of a field.
 

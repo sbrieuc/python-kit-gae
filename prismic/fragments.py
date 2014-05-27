@@ -31,7 +31,8 @@ class Fragment(object):
                 "Date":           Fragment.Date,
                 "StructuredText": structured_text.StructuredText,
                 "Link.document":  Fragment.DocumentLink,
-                "Embed":          Fragment.Embed
+                "Embed":          Fragment.Embed,
+                "Group":          Fragment.Group
             }
 
         fragment_type = data.get("type")
@@ -144,6 +145,21 @@ class Fragment(object):
             return ("""<div data-oembed="%(url)s" data-oembed-type="%(type)s" data-oembed-provider="%(provider)s">"""
                     "%(html)s"
                     "</div>") % self.__dict__
+
+    class Group(FragmentElement):
+        def __init__(self, value):
+            self.data = value
+
+        @property
+        def as_html(self, linkResolver):
+            output = ""
+            for fragment in self.data.iteritems():
+                for fragment_name in fragment.iteritems():
+                    output += "<section data-field='{}'>".format(fragment_name)
+                    output += fragment_name.as_html(linkResolver)
+                    output += "</section>"
+
+            return output
 
     # Basic fragments
 
