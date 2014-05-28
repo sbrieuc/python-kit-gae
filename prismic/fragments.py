@@ -150,7 +150,6 @@ class Fragment(object):
         def __init__(self, value):
             self.data = value
 
-        @property
         def as_html(self, linkResolver):
             output = ""
             for fragment in self.data.iteritems():
