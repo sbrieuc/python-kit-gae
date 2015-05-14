@@ -7,6 +7,8 @@ prismic.connection
 This module implements the Prismic Connection handlers.
 
 """
+from prismic.stubs import DummyCache
+from settings import is_appengine
 
 try:  # 2.7
     import urllib.parse as urlparse
@@ -38,7 +40,10 @@ def get_using_requests(full_url):
 def get_json(url, params=None, access_token=None, cache=None, ttl=None, request_handler=None):
     full_params = dict() if params is None else params.copy()
     if cache is None:
-        cache = ShelveCache(re.sub(r'/\\', '', url.split('/')[2]))
+        if is_appengine:
+            cache = DummyCache()
+        else:
+            cache = ShelveCache(re.sub(r'/\\', '', url.split('/')[2]))
     if request_handler is None:
         request_handler = get_using_requests
     if access_token is not None:
@@ -67,7 +72,7 @@ def get_json(url, params=None, access_token=None, cache=None, ttl=None, request_
 
 
 def get_max_age(headers):
-    expire_header = headers["Cache-Control"]
+    expire_header = headers.get("Cache-Control", None)
     if expire_header is not None:
         m = re.match("max-age=(\d+)", expire_header)
         if m:
